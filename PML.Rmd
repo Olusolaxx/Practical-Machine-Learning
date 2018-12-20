@@ -1,0 +1,99 @@
+---
+title: "Practical Machine Learning Week 4 Project"
+author: "Olusola Afuwape"
+date: "November 29, 2018"
+output: html_document
+---
+
+```{r setoptions, echo = TRUE}
+# Load libraries
+library(knitr)
+library(caret)
+library(randomForest)
+library(e1071)
+library(gbm)
+opts_chunk$set(echo = TRUE, results = TRUE, cache = TRUE)
+```
+
+```{r downloads}
+# Set working directory and download files
+
+setwd("C://Users//Olusola//Desktop//PML_WK4")
+
+TrainingUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+TestUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+TrainingFile <- "pml-training.csv"
+TestFile <- "pml-testing.csv"
+
+download.file(TrainingUrl, TrainingFile)
+download.file(TestUrl, TestFile)
+
+TrainingData <- read.csv(TrainingFile)
+TestData <- read.csv(TestFile)
+```
+
+```{r data_explore}
+
+# TrainingData; TestData
+# colnames(TrainingData); colnames(TestData)
+ dim(TrainingData); dim(TestData)
+```
+
+#### Cleanse Data
+Remove NAs, blank entries and #DIV/0! from both training and test data.Also remove non-required variables from the data set.
+```{r data_cleansing}
+TrainingData <- read.csv(TrainingFile, na.strings = c("NA", "", "#DIV/0!" ))
+TrainingData <- TrainingData[, colSums(is.na(TrainingData)) == 0]
+TrainingData <- TrainingData[, -c(1:7)]
+
+TestData <- read.csv(TestFile, na.strings = c("NA", "", "#DIV/0!"))
+TestData <- TestData[, colSums(is.na(TestData)) == 0]
+TestData <- TestData[, -c(1:7)]
+
+dim(TrainingData); dim(TestData)
+```
+
+#### Data partitioning
+```{r partition}
+inTrain <- createDataPartition(TrainingData$classe, p = 0.7, list = FALSE)
+Training <- TrainingData[inTrain,]
+Test <- TrainingData[-inTrain,]
+dim(Training); dim(Test)
+```
+
+#### Data Model
+```{r caret_models}
+# Use random forest
+Rforest_fit <- train(classe ~ ., data = Training, method = "rf", ntree = 100)
+
+# Prediction using random forest
+Rforest_predict <- predict(Rforest_fit, Test)
+Rforest_confusion <- confusionMatrix(Rforest_predict, Test$classe)
+Rforest_confusion
+```
+
+#### Matrix plot
+```{r matrix_plot}
+plot(Rforest_confusion$table, col = Rforest_confusion$byClass, main = paste("Random Forest Level of Accuracy =", round(Rforest_confusion$overall["Accuracy"], 4)))
+```
+
+#### Prediction 
+```{r predict}
+test_prediction <- predict(Rforest_fit, newdata = TestData)
+test_prediction
+```
+
+#### Cross Validation using Gradient Boosting Model
+```{r gbm}
+GBM_fit <- train(classe ~ ., data = Training, method = "gbm", verbose = FALSE)
+GBM_fit
+
+GBM_predict <- predict(GBM_fit, Test)
+GBM_confusion <- confusionMatrix(GBM_predict, Test$classe)
+GBM_confusion
+```
+
+#### Conclusion
+
+Random forest accuracy is 99% accurate while Gradient boosting model is 96% accurate. Both accuracies are similar, Random forest is used to predict the quiz.
